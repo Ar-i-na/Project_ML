@@ -97,8 +97,8 @@ def main():
         log_lines.append("**Вывод:** \n")
 
     summary_df = pd.DataFrame(summary_rows).sort_values("macro_f1", ascending=False)
-    summary_path = os.path.join(RESULTS_DIR, "experiments_summary.csv")
-    summary_df.to_csv(summary_path, index=False)
+    summary_path = os.path.join(RESULTS_DIR, "experiments_summary.xlsx")
+    summary_df.to_excel(summary_path, index=False)
 
     log_lines.append("\n## Сводная таблица (отсортировано по macro-F1)\n")
     log_lines.append("```")
