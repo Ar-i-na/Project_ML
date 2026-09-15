@@ -1,127 +1,145 @@
-# 20 Newsgroups Classification
+Проект по классификации сообщений из архива 20 Newsgroups на три
+тематических класса с исследованием влияния служебных частей письма на
+качество модели.
 
-Классификация текстов на 3 класса из датасета **20 Newsgroups**:
-`comp.graphics`, `sci.space`, `rec.sport.baseball`.
+**Классы:**
+- `comp.graphics` — компьютерная графика
+- `sci.space` — космос
+- `rec.sport.baseball` — бейсбол
 
-**Исследовательский вопрос:** насколько служебные части сообщений
-(headers, footers, quotes) влияют на качество классификации? Сравниваются
-результаты на исходных данных и после удаления этих частей.
+**Задача:** по тексту сообщения определить, к какой из трёх групп оно
+относится (multi-class классификация).
 
-Подробное объяснение того, что делает каждый файл, и почему выбрана
-метрика macro-F1, — в [`EXPLANATION.md`](./EXPLANATION.md).
+**Основная метрика:** macro-F1 — F1-score, посчитанный для каждого класса
+отдельно и усреднённый без учёта размера классов. В отличие от accuracy,
+даёт каждому классу равный вес и честно показывает, если модель плохо
+работает на одном из них.
+
+**Исследовательский вопрос:** насколько служебные части сообщений —
+headers (технические заголовки: From, Subject, Organization), footers
+(подписи) и quotes (цитаты из предыдущих сообщений) — влияют на качество
+классификации? Сравниваются результаты на исходных данных и после
+удаления этих частей.
 
 ## Установка
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+python -m venv venv
+venv\Scripts\activate  
+
 pip install -r requirements.txt
 ```
 
-Единственная зависимость нестандартной библиотеки — scikit-learn; никаких
-компиляторов и системных библиотек не требуется, всё ставится через pipr
-без проблем.
-
 Датасет скачивается автоматически при первом запуске через
-`sklearn.datasets.fetch_20newsgroups` (нужен интернет один раз, дальше
-берётся из локального кэша `~/scikit_learn_data`).
+`sklearn.datasets.fetch_20newsgroups` и далее берётся из локального кэша.
+
+## Запуск
+
+**Первичный анализ данных:**
+```bash
+python notebooks/01_eda.py
+```
+Выводит распределение документов по классам, статистику длины текстов и
+пример документа до и после удаления служебных частей.
+
+**Основной эксперимент (все конфигурации сразу):**
+```bash
+python experiments/run_experiments.py
+```
+Запускает все пять экспериментов и сохраняет результаты в `results/`.
+Это основная команда для воспроизведения работы.
+
+**Отдельный эксперимент:**
+```bash
+python train.py --approach tfidf_logreg --save-prefix baseline
+python train.py --approach tfidf_logreg --strip-meta --save-prefix stripped
+python train.py --approach tfidf_char_svm --save-prefix char_ngrams
+```
+
+Доступные значения `--approach`: `tfidf_logreg`, `tfidf_linearsvc`,
+`tfidf_char_svm`. Флаг `--strip-meta` включает удаление
+headers/footers/quotes.
+
+## Результаты
+
+После запуска `experiments/run_experiments.py` в папке `results/`
+появляются:
+
+| Файл | Содержимое |
+|---|---|
+| `experiments_summary.csv` | Сводная таблица: macro-F1 и accuracy по всем экспериментам |
+| `experiment_log.md` | Лог экспериментов: что изменили, зачем, результат, вывод |
+| `<эксперимент>_metrics.json` | Детальные метрики: precision/recall/F1 по каждому классу |
+| `<эксперимент>_confusion_matrix.png` | Матрица ошибок, нормализованная по строкам |
+
+## Подходы
+
+### Baseline: TF-IDF + логистическая регрессия
+
+TF-IDF на словах (униграммы): каждому слову присваивается вес по частоте
+в документе с поправкой на редкость слова в корпусе. Поверх — линейная
+логистическая регрессия. Стандартный сильный baseline для разреженных
+высокоразмерных текстовых признаков.
+
+### Альтернатива: TF-IDF на символьных n-граммах + LinearSVC
+
+Вместо целых слов признаками становятся последовательности из 3–5
+символов (`analyzer="char_wb"`). Такое представление улавливает
+морфологию и общие корни слов — формы `render` / `rendering` / `rendered`
+разделяют общие n-граммы, тогда как для словного TF-IDF это три
+независимых признака. Также устойчивее к опечаткам и редким словоформам,
+которых много в неформальной переписке.
+
+## Эксперименты
+
+| # | Эксперимент | Что проверяется |
+|---|---|---|
+| 1 | `baseline_tfidf_raw` | Базовое решение на исходных данных — точка отсчёта |
+| 2 | `tfidf_stripped_meta` | Влияние удаления headers/footers/quotes (исследовательский вопрос) |
+| 3 | `char_ngrams_raw` | Альтернативная репрезентация текста при тех же данных |
+| 4 | `char_ngrams_stripped_meta` | Одинаково ли оба подхода реагируют на удаление служебных частей |
+| 5 | `tfidf_stripped_bigrams` | Помогает ли учёт словосочетаний (биграмм) |
+
+Эксперименты 1 и 2 различаются ровно одним параметром, что позволяет
+приписать разницу в метриках именно удалению служебных частей.
+Эксперименты 3 и 4 воспроизводят то же сравнение для второй
+репрезентации — если эффект проявляется у обоих подходов, он относится к
+природе данных, а не к особенностям конкретной модели.
 
 ## Структура проекта
 
 ```
 .
-├── config.py                    # классы, метрика, random_state — единая точка настройки
+├── config.py                      # классы, random_state, доля test-выборки
 ├── requirements.txt
-├── train.py                     # запуск ОДНОГО эксперимента (CLI)
+├── train.py                       # запуск одного эксперимента (CLI + функция run_experiment)
 ├── src/
-│   ├── data.py                  # загрузка данных + EDA-обзор
-│   ├── preprocess.py            # чистка текста
-│   ├── models.py                # сборка sklearn Pipeline'ов (baseline + альтернатива)
-│   ├── evaluate.py              # метрики + confusion matrix
-│   └── error_analysis.py        # разбор ошибок, топ-фичи, confused pairs
+│   ├── data.py                    # загрузка данных, переключатель strip_meta, EDA-обзор
+│   ├── preprocess.py              # очистка текста
+│   ├── models.py                  # сборка pipeline'ов для всех подходов
+│   ├── evaluate.py                # расчёт метрик, построение confusion matrix
+│   └── error_analysis.py          # разбор ошибок, топ-признаки, частые пары путаницы
 ├── experiments/
-│   └── run_experiments.py       # запуск ВСЕХ экспериментов + сводная таблица
+│   └── run_experiments.py         # запуск всех экспериментов + сводная таблица
 ├── notebooks/
-│   └── 01_eda.py                # первичный анализ данных (шаг 1 задания)
-└── results/                     # сюда сохраняются метрики, confusion matrix, лог
+│   └── 01_eda.py                  # первичный анализ данных
+└── results/                       # метрики, матрицы ошибок, логи (создаётся при запуске)
 ```
 
-## Альтернативный подход: TF-IDF на символьных n-граммах
+## Методологические решения
 
-Baseline использует TF-IDF на **словах** (каждый признак — целое слово).
-Альтернатива (`tfidf_char_svm`) строит TF-IDF на **последовательностях
-из 3–5 символов** (`analyzer="char_wb"` в `TfidfVectorizer`) + LinearSVC.
-Модель видит не целые слова, а кусочки слов — суффиксы, устойчивые
-сочетания букв, части терминов — что даёт принципиально другое
-представление текста, устойчивое к редким словоформам и опечаткам.
-Работает целиком на scikit-learn, без дополнительных зависимостей.
+**Единое разбиение для всех экспериментов.** Данные загружаются целиком
+(`subset="all"`) и делятся на train/test собственным
+`train_test_split` с фиксированным `random_state` и стратификацией по
+классам. Это гарантирует, что raw- и stripped-версии сравниваются на
+одних и тех же документах, и разница в метриках не объясняется другим
+случайным разбиением.
 
-## Как запустить
+**Нормализация confusion matrix по строкам.** Матрица показывает доли, а
+не абсолютные числа, поэтому её можно читать как recall по каждому классу
+независимо от размера класса.
 
-**1. Первичный анализ данных (шаг 1 задания):**
-```bash
-python notebooks/01_eda.py
-```
-
-**2. Один эксперимент (например, baseline):**
-```bash
-python train.py --approach tfidf_logreg --save-prefix baseline
-```
-Удалить headers/footers/quotes: 
-```bash
-python train.py --approach tfidf_logreg --strip-meta --save-prefix stripped
-```
-Альтернативный подход (TF-IDF на символьных n-граммах + LinearSVC):
-```bash
-python train.py --approach tfidf_char_svm --save-prefix char_ngrams
-```
-
-**3. Все эксперименты сразу (рекомендуется):**
-```bash
-python experiments/run_experiments.py
-```
-Создаст:
-- `results/experiments_summary.csv` — сводная таблица macro-F1/accuracy по всем запускам;
-- `results/experiment_log.md` — человекочитаемый лог (что изменили / зачем / результат / вывод);
-- `results/<experiment_name>_confusion_matrix.png` — confusion matrix для каждого эксперимента;
-- `results/<experiment_name>_metrics.json` — детальные метрики по каждому классу.
-
-**4. Анализ ошибок конкретной модели (в Python/ноутбуке):**
-```python
-from train import run_experiment
-from src.error_analysis import get_misclassified, get_confused_pair, top_confused_pairs, top_features_per_class
-
-result = run_experiment("tfidf_logreg", strip_meta=False, save_prefix="baseline")
-
-# Примеры ошибочных предсказаний
-get_misclassified(result["X_test"], result["y_test"], result["y_pred"], result["target_names"], n=10)
-
-# Конкретная путаница: true=sci.space, predicted=comp.graphics
-get_confused_pair(result["X_test"], result["y_test"], result["y_pred"], result["target_names"],
-                   "sci.space", "comp.graphics")
-
-# Топ-слова, на которые опирается модель по каждому классу (только для tfidf_* подходов)
-top_features_per_class(result["pipeline"], result["target_names"])
-```
-
-## Готовые результаты
-
-После запуска `experiments/run_experiments.py` результаты появятся в `results/`.
-Файлы `experiment_log.md` и `experiments_summary.csv` содержат готовый
-шаблон под фиксацию каждого эксперимента (что изменили / зачем / результат) —
-вам останется дописать колонку "вывод" своими словами по итогам сравнения.
-
-## Что уже заложено в код под ваш вопрос про headers/footers/quotes
-
-- `src/data.load_data(..., strip_meta=True/False)` — единый флаг, который
-  переключает `remove=('headers','footers','quotes')` в `fetch_20newsgroups`.
-- `train.run_experiment` использует **одно и то же** train/test-разбиение
-  (тот же `random_state`) для raw и strip_meta версий данных, чтобы разница
-  в metrics была вызвана именно удалением служебных частей, а не другим
-  случайным разбиением.
-- В `experiments/run_experiments.py` уже есть пара экспериментов
-  `baseline_tfidf_raw` vs `tfidf_stripped_meta`, различающихся только этим
-  флагом — прямое сравнение для вашего исследовательского вопроса.
-- `src/error_analysis.get_confused_pair` позволяет достать конкретные тексты
-  для пары классов на raw и на stripped варианте отдельно — сравните их,
-  чтобы найти примеры "ошибка исчезла/появилась после удаления headers".
+**Интерпретируемость.** Линейные модели позволяют извлечь веса признаков
+(`src/error_analysis.top_features_per_class`) и проверить, опирается ли
+модель на тематическую лексику или на служебные токены — это
+непосредственно используется при ответе на исследовательский вопрос.
