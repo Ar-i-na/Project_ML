@@ -1,5 +1,4 @@
 import re
-
 URL_RE = re.compile(r"https?://\S+|www\.\S+")
 EMAIL_RE = re.compile(r"\S+@\S+")
 NON_ALPHA_RE = re.compile(r"[^a-zA-Z\s]")
