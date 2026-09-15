@@ -14,7 +14,6 @@ EXPERIMENTS = [
         why=(
             "Базовое решение по заданию: TF-IDF (униграммы) + LogisticRegression "
             "на исходных (сырых) данных, без удаления headers/footers/quotes. "
-            "Это отправная точка для сравнения со всеми остальными вариантами."
         ),
     ),
     dict(
@@ -23,8 +22,7 @@ EXPERIMENTS = [
         strip_meta=True,
         model_kwargs={"ngram_range": (1, 1), "C": 1.0},
         why=(
-            "ОСНОВНОЙ исследовательский вопрос: насколько headers/footers/quotes "
-            "влияют на качество? Меняем только strip_meta (True вместо False), "
+            "Меняем strip_meta (True вместо False), "
             "всё остальное идентично baseline_tfidf_raw — так разница в metrics "
             "объясняется именно удалением служебных частей, а не чем-то ещё."
         ),
@@ -35,7 +33,7 @@ EXPERIMENTS = [
         strip_meta=False,
         model_kwargs={"ngram_range": (3, 5), "C": 1.0},
         why=(
-            "Альтернативный подход (шаг 4 задания): TF-IDF на символьных "
+            "Альтернативный подход: TF-IDF на символьных "
             "n-граммах (3-5 символов) вместо целых слов + LinearSVC. Сравниваем "
             "с baseline_tfidf_raw на тех же (сырых) данных, чтобы понять, "
             "помогает ли модели видеть подслова/морфологию вместо целых токенов."
@@ -96,8 +94,7 @@ def main():
         log_lines.append(f"**Зачем:** {exp['why']}\n")
         log_lines.append(f"**Результат:** macro-F1 = {m['macro_f1']:.4f}, "
                           f"accuracy = {m['accuracy']:.4f}\n")
-        log_lines.append("**Вывод:** _(заполните после сравнения с другими "
-                          "экспериментами — см. summary таблицу ниже)_\n")
+        log_lines.append("**Вывод:** \n")
 
     summary_df = pd.DataFrame(summary_rows).sort_values("macro_f1", ascending=False)
     summary_path = os.path.join(RESULTS_DIR, "experiments_summary.csv")
