@@ -1,0 +1,6 @@
+experiment,approach,strip_meta,model_kwargs,macro_f1,accuracy
+char_ngrams_raw,tfidf_char_svm,False,"{'ngram_range': (3, 5), 'C': 1.0}",0.9797,0.9797
+baseline_tfidf_raw,tfidf_logreg,False,"{'ngram_range': (1, 1), 'C': 1.0}",0.9704,0.9702
+char_ngrams_stripped_meta,tfidf_char_svm,True,"{'ngram_range': (3, 5), 'C': 1.0}",0.9065,0.9066
+tfidf_stripped_meta,tfidf_logreg,True,"{'ngram_range': (1, 1), 'C': 1.0}",0.8944,0.8945
+tfidf_stripped_bigrams,tfidf_logreg,True,"{'ngram_range': (1, 2), 'C': 1.0}",0.8835,0.8836
